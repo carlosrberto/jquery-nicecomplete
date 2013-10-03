@@ -65,8 +65,9 @@
                 this._renderResults(data);
             }, this));
 
+            this.el.on('keyup.nicecomplete', $.proxy(this._keyUpHandler, this));
+
             if ( this.options.renderResults ) {
-                this.el.on('keyup.nicecomplete', $.proxy(this._keyUpHandler, this));
                 this.el.on('keydown.nicecomplete', $.proxy(this._keyDownHandler, this));
             }
         },
