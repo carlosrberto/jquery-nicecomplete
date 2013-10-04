@@ -84,19 +84,21 @@
 
             var keyCode = event.keyCode,
                 arrowPressed = keyCode === 38 || keyCode === 40,
+                arrowUp = keyCode === 38,
+                arrowDown = keyCode === 40,
                 current = this.resultsContainer.find('.'+this.options.activeClass+':eq(0)'),
                 next;
 
             if ( arrowPressed ) {
                 event.preventDefault();
 
-                if ( current.length === 0 ) {
+                if ( current.length === 0 && arrowDown ) {
                     next = this.resultsContainer.find('>*').first();
                     next.addClass(this.options.activeClass);
                     return;
                 }
 
-                if ( keyCode === 38 ) { // up
+                if ( arrowUp ) { // up
                     next = current.prev();
 
                     if ( this.options.cycleResultsNav && !next.length ) {
@@ -104,7 +106,7 @@
                     }
                 }
 
-                if ( keyCode === 40 ) { // down
+                if ( arrowDown ) { // down
                     next = current.next();
 
                     if ( this.options.cycleResultsNav &&  !next.length ) {
@@ -114,6 +116,8 @@
 
                 if ( next.length ) {
                     next.addClass(this.options.activeClass);
+                    current.removeClass(this.options.activeClass);
+                } else if( !next.length && arrowUp ) {
                     current.removeClass(this.options.activeClass);
                 }
             }
