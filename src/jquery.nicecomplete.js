@@ -51,6 +51,9 @@
         this.searchInterval = null;
         this.cache = {};
 
+        // disable native browser autocomplete
+        this.el.attr('autocomplete', 'off');
+
         if (!this.options.url) {
             throw new Error('You must specify the service url using options.url');
         }
