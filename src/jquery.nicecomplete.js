@@ -8,19 +8,21 @@
 * Licensed under a Creative Commons Attribution 3.0 License
 * http://creativecommons.org/licenses/by-sa/3.0/
 *
-* Version: 0.2.1
+* Version: 0.3
 */
 
 (function($) {
     var defaults = {
         renderResults: true,
-        searchDelay: 500,
+        cycleResultsNav: false,
+        searchDelay: 400,
+        showHideDelay: 300,
         resultsSelector: '.nc-results-list',
         linkSelector: '>a',
         activeClass: 'nc-item-active',
 
         url: function(p) {
-            return '/search/autocomplete/?q=' + p;
+            return '/search/autocomplete/?size=30x30&q=' + p;
         },
 
         parseResults: function(data) {
@@ -33,6 +35,7 @@
                 '<a href="'+item.url+'" class="link">'+
                     '<div class="image"><img src="'+item.img+'"></div>'+
                     '<p class="title">'+item.name+'</p>'+
+                    '<p class="price">R$ '+ item.price +'</p>'+
                 '</a>'+
             '</li>';
             return html;
@@ -66,6 +69,8 @@
             }, this));
 
             this.el.on('keyup.nicecomplete', $.proxy(this._keyUpHandler, this));
+            this.el.on('focus.nicecomplete', $.proxy(this._focusHander, this));
+            this.el.on('blur.nicecomplete', $.proxy(this._blurHandler, this));
 
             if ( this.options.renderResults ) {
                 this.el.on('keydown.nicecomplete', $.proxy(this._keyDownHandler, this));
@@ -78,27 +83,33 @@
             }
 
             var keyCode = event.keyCode,
-                current = this.resultsContainer.find('.'+this.options.activeClass+':eq(0)');
+                arrowPressed = keyCode === 38 || keyCode === 40,
+                current = this.resultsContainer.find('.'+this.options.activeClass+':eq(0)'),
+                next;
 
-
-            if ( keyCode === 38 ) { // up
+            if ( arrowPressed ) {
                 event.preventDefault();
-                var prev = current.prev();
 
-                if ( !prev.length ) {
-                    prev = this.resultsContainer.find('>*').last();
-                }
-
-                if ( prev.length ) {
-                    prev.addClass(this.options.activeClass);
-                    current.removeClass(this.options.activeClass);
-                }
-            } else if( keyCode === 40 ) { // down
-                event.preventDefault();
-                var next = current.next();
-
-                if ( !next.length ) {
+                if ( current.length === 0 ) {
                     next = this.resultsContainer.find('>*').first();
+                    next.addClass(this.options.activeClass);
+                    return;
+                }
+
+                if ( keyCode === 38 ) { // up
+                    next = current.prev();
+
+                    if ( this.options.cycleResultsNav && !next.length ) {
+                        next = this.resultsContainer.find('>*').last();
+                    }
+                }
+
+                if ( keyCode === 40 ) { // down
+                    next = current.next();
+
+                    if ( this.options.cycleResultsNav &&  !next.length ) {
+                        next = this.resultsContainer.find('>*').first();
+                    }
                 }
 
                 if ( next.length ) {
@@ -111,15 +122,45 @@
         _handleResultSelection: function(event) {
             var linkEl = this.resultsContainer.find('.'+this.options.activeClass+':eq(0) ' + this.options.linkSelector),
                 url = linkEl.attr('href');
-            if ( event.keyCode === 13 && !this.resultsContainer.is(':empty') && linkEl ) {
+            if ( event.keyCode === 13 && !this.resultsContainer.is(':empty') && url ) {
                 event.preventDefault();
                 location.href = url;
             }
         },
 
+        _hide: function() {
+            var that = this;
+            setTimeout(function(){
+                that.resultsContainer.hide();
+                that.el.trigger('hide.nicecomplete');
+            }, this.options.showHideDelay);
+        },
+
+        _show: function() {
+            var that = this;
+            setTimeout(function(){
+                that.resultsContainer.show();
+                that.el.trigger('show.nicecomplete');
+            }, this.options.showHideDelay);
+        },
+
+        _blurHandler: function(event) {
+            this._hide();
+        },
+
+        _focusHander: function(event) {
+            this._show();
+        },
+
         _keyUpHandler: function(event) {
-            if ( !this.delayInProgress ) {
-                this._searchTimer(this.el.val());
+            var text = this.el.val();
+            if ( text.length === 0  || text.length > 2 ) {
+                this._searchTimer(text);
+            }
+
+            // esc key
+            if (event.keyCode === 27) {
+                this.el.trigger('blur');
             }
         },
 
@@ -130,25 +171,27 @@
 
         _searchTimer: function(text) {
             var that = this;
-            this.delayInProgress = true;
-            this.searchInterval = setTimeout(function() {
-                if (that.lastText !== text) {
-                    that.lastText = text;
-                    that.search(text).done(function() {
+            if ( !this.delayInProgress ) {
+                this.delayInProgress = true;
+                this.searchInterval = setTimeout(function() {
+                    if (that.lastText !== text) {
+                        that.lastText = text;
+                        that.search(text).done(function() {
+                            clearTimeout(that.searchInterval);
+                            that.delayInProgress = false;
+                            if ( text !== that.el.val()) {
+                                that._searchTimer(that.el.val());
+                            }
+                        }).fail(function(){
+                            clearTimeout(that.searchInterval);
+                            that.delayInProgress = false;
+                        });
+                    } else {
                         clearTimeout(that.searchInterval);
                         that.delayInProgress = false;
-                        if ( text !== that.el.val()) {
-                            that._searchTimer(that.el.val());
-                        }
-                    }).fail(function(){
-                        clearTimeout(that.searchInterval);
-                        that.delayInProgress = false;
-                    });
-                } else {
-                    clearTimeout(that.searchInterval);
-                    that.delayInProgress = false;
-                }
-            }, this.options.searchDelay);
+                    }
+                }, this.options.searchDelay);
+            }
         },
 
         search: function(text) {
@@ -186,11 +229,16 @@
                 resultsList = this.options.parseResults(data),
                 renderItem = this.options.renderResultItem;
 
+            if ( resultsList.length > 0 ) {
+                this.el.trigger('results', [resultsList]);
+            } else {
+                this.el.trigger('noresults');
+            }
+
             resultsContainer.empty();
             $.each(resultsList, function(index, item){
                 resultsContainer.append(renderItem(item));
             });
-            resultsContainer.find('>*').first().addClass('nc-item-active');
         }
     };
 
