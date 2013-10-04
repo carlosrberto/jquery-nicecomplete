@@ -73,4 +73,20 @@ input.on('beforeload.nicecomplete', function(event, data){
 input.on('loaderror.nicecomplete', function(event, data){
 	// do something on request error
 });
+
+input.on('show.nicecomplete', function(event, data){
+    // do something when results are visible
+});
+
+input.on('hide.nicecomplete', function(event, data){
+    // do something when results are hidden
+});
+
+input.on('results.nicecomplete', function(event, data){
+    // do something when any results are returned
+});
+
+input.on('noresults.nicecomplete', function(event, data){
+    // do something when no results are returned
+});
 ```
