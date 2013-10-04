@@ -230,9 +230,9 @@
                 renderItem = this.options.renderResultItem;
 
             if ( resultsList.length > 0 ) {
-                this.el.trigger('results', [resultsList]);
+                this.el.trigger('results.nicecomplete', [resultsList]);
             } else {
-                this.el.trigger('noresults');
+                this.el.trigger('noresults.nicecomplete');
             }
 
             resultsContainer.empty();
